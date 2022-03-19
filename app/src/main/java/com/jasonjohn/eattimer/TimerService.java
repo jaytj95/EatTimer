@@ -43,7 +43,7 @@ public class TimerService extends Service {
             public void onFinish() {
                 Log.d(TAG, "Timer Service ticking finished");
                 Intent intent = new Intent("bg_timer_broadcast");
-                intent.putExtra("value", 0F);
+                intent.putExtra("value", -1F);
                 sendBroadcast(intent);
             }
         };

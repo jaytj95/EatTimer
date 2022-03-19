@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.CheckBox;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -24,8 +25,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView mSeekbarValueText;
 
     private int mTimerValue = 90;
+    private int mCounter = 0;
     private BroadcastReceiver mBroadcastReceiver;
-    boolean serviceRunning = false;
+    boolean mServiceRunning = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -36,22 +38,32 @@ public class MainActivity extends AppCompatActivity {
         mTimeText = findViewById(R.id.time);
 
         mTimeText.setOnClickListener(v -> {
-            if (serviceRunning) {
-                stopService(new Intent(getApplicationContext(), TimerService.class));
+            if (mServiceRunning) {
+                stopTimer();
             } else {
-                Intent intent = new Intent(getApplicationContext(), TimerService.class);
-                intent.putExtra("time", mTimerValue);
-                startService(intent);
+                startTimer();
             }
-            serviceRunning = !serviceRunning;
-            toggleControls(serviceRunning);
         });
 
         mBroadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                mTimeText.setText(""+intent.getFloatExtra("value", 0));
+                float progressValue = intent.getFloatExtra("value", 0);
+
                 mCircularProgressbar.setProgressValue(intent.getFloatExtra("value", 0));
+                mTimeText.setText(progressValue + "");
+
+                if (progressValue == -1F) {
+                    Log.d(TAG, "Timer done");
+
+                    if (((CheckBox)findViewById(R.id.repeatcheckbox)).isChecked()) {
+                        startTimer();
+                    } else {
+                        stopTimer();
+                    }
+                    mCounter++;
+                    ((TextView)findViewById(R.id.counter)).setText("Counter: " + mCounter);
+                }
             }
         };
         registerReceiver(mBroadcastReceiver, new IntentFilter("bg_timer_broadcast"));
@@ -80,7 +92,21 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void toggleControls(boolean serviceRunning) {
-        findViewById(R.id.configmenu).setVisibility(serviceRunning ? View.GONE : View.VISIBLE);
+    private void startTimer() {
+        mServiceRunning = true;
+        Intent intent = new Intent(getApplicationContext(), TimerService.class);
+        intent.putExtra("time", mTimerValue);
+        startService(intent);
+        toggleControls();
+    }
+    private void stopTimer() {
+        mServiceRunning = false;
+        Intent intent = new Intent(getApplicationContext(), TimerService.class);
+        stopService(intent);
+        toggleControls();
+    }
+
+    private void toggleControls() {
+        findViewById(R.id.configmenu).setVisibility(mServiceRunning ? View.GONE : View.VISIBLE);
     }
 }
