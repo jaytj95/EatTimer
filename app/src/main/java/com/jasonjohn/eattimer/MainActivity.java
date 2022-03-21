@@ -1,7 +1,5 @@
 package com.jasonjohn.eattimer;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -14,7 +12,13 @@ import android.widget.CheckBox;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.room.Room;
+
 import com.brkckr.circularprogressbar.CircularProgressBar;
+import com.jasonjohn.eattimer.db.AppDatabase;
+import com.jasonjohn.eattimer.db.MealRecordDao;
+import com.jasonjohn.eattimer.db.MealRecordEntity;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -24,15 +28,22 @@ public class MainActivity extends AppCompatActivity {
     private SeekBar mSeekbar;
     private TextView mSeekbarValueText;
 
+    private BroadcastReceiver mBroadcastReceiver;
+    private AppDatabase mAppDatabase;
+
     private int mTimerValue = 90;
     private int mCounter = 0;
-    private BroadcastReceiver mBroadcastReceiver;
-    boolean mServiceRunning = false;
+    private boolean mServiceRunning = false;
+    private long mStartTime;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        mAppDatabase = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "eattimer-meals")
+                .allowMainThreadQueries()
+                .build();
 
         mCircularProgressbar = findViewById(R.id.progressbar);
         mTimeText = findViewById(R.id.time);
@@ -81,19 +92,30 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // no-op
-            }
+            public void onStartTrackingTouch(SeekBar seekBar) {}
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                // no-op
-            }
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        findViewById(R.id.finish).setOnClickListener(v -> {
+            Log.d(TAG, "Counter is " + mCounter);
+            Log.d(TAG, "Start time is " + mStartTime);
+
+            MealRecordDao dao = mAppDatabase.mealRecordDao();
+            MealRecordEntity entity = new MealRecordEntity();
+            entity.counter = mCounter;
+            entity.time = mStartTime;
+
+            dao.insertAll(entity);
+
+            startActivity(new Intent(this, ResultsActivity.class));
         });
     }
 
     private void startTimer() {
         mServiceRunning = true;
+        mStartTime = System.currentTimeMillis();
         Intent intent = new Intent(getApplicationContext(), TimerService.class);
         intent.putExtra("time", mTimerValue);
         startService(intent);
